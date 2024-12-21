@@ -8,6 +8,15 @@ nameOverride: ""
 fullnameOverride: ""
 
 cvat:
+  activeDirectory:
+    enabled: false
+    name: cvat-active-directory-secret
+    ldapServer:
+      uri: "ldap://ldap.example.com"
+      baseDN: "DC=example,DC=com"
+      bindDN: "CN=Administrator,CN=Users,DC=example,DC=com"
+      bindPassword: "password"
+
   backend:
     labels: {}
     annotations: {}

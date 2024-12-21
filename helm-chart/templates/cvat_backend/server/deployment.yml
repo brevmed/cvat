@@ -58,6 +58,10 @@ spec:
           env:
           - name: ALLOWED_HOSTS
             value: {{ $localValues.envs.ALLOWED_HOSTS | squote}}
+          {{- if .Values.cvat.activeDirectory.enabled }}
+          - name: DJANGO_SETTINGS_MODULE
+            value: settings
+          {{- end }}
           {{ include "cvat.sharedBackendEnv" . | indent 10 }}
           {{ include "cvat.sharedClickhouseEnv" . | indent 10 }}
           {{- with concat .Values.cvat.backend.additionalEnv $localValues.additionalEnv }}
@@ -80,6 +84,12 @@ spec:
             {{- toYaml (omit $localValues.livenessProbe "enabled") | nindent 12 }}
           {{- end }}
           volumeMounts:
+          {{- if .Values.cvat.activeDirectory.enabled }}
+          - mountPath: /home/django/settings.py
+            name: cvat-active-directory
+            subPath: settings.py
+            readOnly: true
+          {{- end }}
           {{- if not .Values.cvat.backend.disableDistinctCachePerService }}
           - mountPath: /home/django/data/cache
             name: cvat-backend-per-service-cache
@@ -155,6 +165,11 @@ spec:
       {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{- if .Values.cvat.activeDirectory.enabled }}
+        - name: cvat-active-directory
+          secret:
+            secretName: {{ .Values.cvat.activeDirectory.name }}
+        {{- end }}
         {{- if .Values.cvat.backend.defaultStorage.enabled }}
         - name: cvat-backend-data
           persistentVolumeClaim:
