@@ -1,0 +1,75 @@
+{{- if .Values.cvat.activeDirectory.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "{{ tpl (.Values.cvat.activeDirectory.name) . }}"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cvat.labels" . | nindent 4 }}
+type: generic
+stringData:
+  settings.py: |
+    # We are overlaying production
+    from cvat.settings.production import *
+
+    # Custom code below
+    import ldap
+    from django_auth_ldap.config import LDAPSearch
+    from django_auth_ldap.config import PosixGroupType
+
+    # Notify CVAT that we are using LDAP authentication
+    IAM_TYPE = 'LDAP'
+
+    # Talking to the LDAP server
+    AUTH_LDAP_SERVER_URI = "{{ .Values.cvat.activeDirectory.ldapServer.uri }}" # IP Addresses also work
+    ldap.set_option(ldap.OPT_REFERRALS, 0)
+
+    _BASE_DN = "{{ .Values.cvat.activeDirectory.ldapServer.baseDN }}"
+
+    # Authenticating with the LDAP server
+    AUTH_LDAP_BIND_DN = "{{ .Values.cvat.activeDirectory.ldapServer.bindDN }}"
+    AUTH_LDAP_BIND_PASSWORD = "{{ .Values.cvat.activeDirectory.ldapServer.bindPassword }}"
+
+    AUTH_LDAP_USER_SEARCH = LDAPSearch(
+        "cn=users,%s" % _BASE_DN,
+        ldap.SCOPE_SUBTREE,
+        "(sAMAccountName=%(user)s)"
+    )
+
+    AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
+        "cn=groups,%s" % _BASE_DN,
+        ldap.SCOPE_SUBTREE,
+        "(objectClass=posixGroup)"
+    )
+
+    # Mapping Django field names to Active Directory attributes
+    AUTH_LDAP_USER_ATTR_MAP = {
+        "user_name": "sAMAccountName",
+        "first_name": "givenName",
+        "last_name": "sn",
+        "email": "mail",
+    }
+
+    # Group Management
+    AUTH_LDAP_GROUP_TYPE = PosixGroupType()
+
+    # Register Django LDAP backend
+    AUTHENTICATION_BACKENDS += ['django_auth_ldap.backend.LDAPBackend']
+
+    # Map Active Directory groups to Django/CVAT groups.
+    AUTH_LDAP_ADMIN_GROUPS = [
+        'cn=cvat admins,cn=groups,%s' % _BASE_DN,
+    ]
+    AUTH_LDAP_WORKER_GROUPS = [
+        'cn=cvat workers,cn=groups,%s' % _BASE_DN,
+    ]
+    AUTH_LDAP_USER_GROUPS = [
+        'cn=cvat users,cn=groups,%s' % _BASE_DN,
+    ]
+
+    DJANGO_AUTH_LDAP_GROUPS = {
+        "admin": AUTH_LDAP_ADMIN_GROUPS,
+        "user": AUTH_LDAP_USER_GROUPS,
+        "worker": AUTH_LDAP_WORKER_GROUPS,
+    }
+{{- end }}
