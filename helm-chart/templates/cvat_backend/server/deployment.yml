@@ -90,10 +90,6 @@ spec:
             subPath: settings.py
             readOnly: true
           {{- end }}
-          {{- if not .Values.cvat.backend.disableDistinctCachePerService }}
-          - mountPath: /home/django/data/cache
-            name: cvat-backend-per-service-cache
-          {{- end }}
           - mountPath: /home/django/data
             name: cvat-backend-data
             subPath: data
